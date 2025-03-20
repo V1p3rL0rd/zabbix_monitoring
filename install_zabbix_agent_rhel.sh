@@ -1,54 +1,54 @@
 #!/bin/bash
 
-# Настройки
-ZABBIX_SERVER="zabbix.local"  # Адрес сервера Zabbix
-SSH_PORT="22"                 # Порт SSH
+# Settings
+ZABBIX_SERVER="zabbix.local"  # Zabbix server address
+SSH_PORT="22"                 # SSH port
 
-# Проверка на root права
+# Check for root privileges
 if [ "$EUID" -ne 0 ]; then 
-    echo "Пожалуйста, запустите скрипт с правами root"
+    echo "Please run the script with root privileges"
     exit 1
 fi
 
-# Обновление системы
-echo "Обновление системы..."
+# System update
+echo "Updating system..."
 dnf update -y
 
-# Установка EPEL репозитория
-echo "Установка EPEL репозитория..."
+# Installing EPEL repository
+echo "Installing EPEL repository..."
 dnf install -y epel-release
 
-# Добавление репозитория Zabbix
-echo "Добавление репозитория Zabbix..."
+# Adding Zabbix repository
+echo "Adding Zabbix repository..."
 rpm -Uvh https://repo.zabbix.com/zabbix/7.0/rhel/9/x86_64/zabbix-release-7.0-1.el9.noarch.rpm
 dnf clean all
 dnf makecache
 
-# Установка Zabbix агента
-echo "Установка Zabbix агента..."
+# Installing Zabbix agent
+echo "Installing Zabbix agent..."
 dnf install -y zabbix-agent
 
-# Настройка Zabbix агента
-echo "Настройка Zabbix агента..."
+# Configuring Zabbix agent
+echo "Configuring Zabbix agent..."
 sed -i "s/Server=127.0.0.1/Server=$ZABBIX_SERVER/" /etc/zabbix/zabbix_agentd.conf
 sed -i "s/ServerActive=127.0.0.1/ServerActive=$ZABBIX_SERVER/" /etc/zabbix/zabbix_agentd.conf
 
-# Настройка SELinux
-echo "Настройка SELinux..."
+# SELinux configuration
+echo "Configuring SELinux..."
 semanage port -a -t ssh_port_t -p tcp $SSH_PORT
 semanage port -a -t zabbix_agent_port_t -p tcp 10050
 
-# Настройка файрвола
-echo "Настройка файрвола..."
+# Firewall configuration
+echo "Configuring firewall..."
 firewall-cmd --permanent --add-service=ssh
 firewall-cmd --permanent --add-port=10050/tcp
 firewall-cmd --reload
 
-# Включение и запуск сервиса
-echo "Включение и запуск сервиса Zabbix агента..."
+# Enabling and starting service
+echo "Enabling and starting Zabbix agent service..."
 systemctl enable zabbix-agent
 systemctl restart zabbix-agent
 
-echo "Установка Zabbix агента завершена!"
-echo "Агент настроен на подключение к серверу: $ZABBIX_SERVER"
-echo "SSH доступ настроен на порту $SSH_PORT" 
+echo "Zabbix agent installation completed!"
+echo "Agent is configured to connect to server: $ZABBIX_SERVER"
+echo "SSH access is configured on port $SSH_PORT" 
