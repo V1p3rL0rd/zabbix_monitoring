@@ -1,45 +1,45 @@
 #!/bin/bash
 
-# Настройки
-ZABBIX_SERVER="zabbix.local"  # Адрес сервера Zabbix
-SSH_PORT="22"                 # Порт SSH
+# Settings
+ZABBIX_SERVER="zabbix.local"  # Zabbix server address
+SSH_PORT="22"                 # SSH port
 
-# Проверка на root права
+# Check for root privileges
 if [ "$EUID" -ne 0 ]; then 
-    echo "Пожалуйста, запустите скрипт с правами root"
+    echo "Please run the script with root privileges"
     exit 1
 fi
 
-# Обновление системы
-echo "Обновление системы..."
+# System update
+echo "Updating system..."
 apt update && apt upgrade -y
 
-# Добавление репозитория Zabbix
-echo "Добавление репозитория Zabbix..."
+# Adding Zabbix repository
+echo "Adding Zabbix repository..."
 wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.0-1+ubuntu24.04_all.deb
 dpkg -i zabbix-release_7.0-1+ubuntu24.04_all.deb
 apt update
 
-# Установка Zabbix агента
-echo "Установка Zabbix агента..."
+# Installing Zabbix agent
+echo "Installing Zabbix agent..."
 apt install -y zabbix-agent
 
-# Настройка Zabbix агента
-echo "Настройка Zabbix агента..."
+# Configuring Zabbix agent
+echo "Configuring Zabbix agent..."
 sed -i "s/Server=127.0.0.1/Server=$ZABBIX_SERVER/" /etc/zabbix/zabbix_agentd.conf
 sed -i "s/ServerActive=127.0.0.1/ServerActive=$ZABBIX_SERVER/" /etc/zabbix/zabbix_agentd.conf
 
-# Настройка файрвола
-echo "Настройка файрвола..."
+# Firewall configuration
+echo "Configuring firewall..."
 ufw allow $SSH_PORT/tcp
 ufw allow 10050/tcp
 ufw --force enable
 
-# Перезапуск сервиса
-echo "Перезапуск сервиса Zabbix агента..."
+# Restarting service
+echo "Restarting Zabbix agent service..."
 systemctl restart zabbix-agent
 systemctl enable zabbix-agent
 
-echo "Установка Zabbix агента завершена!"
-echo "Агент настроен на подключение к серверу: $ZABBIX_SERVER"
-echo "SSH доступ настроен на порту $SSH_PORT" 
+echo "Zabbix agent installation completed!"
+echo "Agent is configured to connect to server: $ZABBIX_SERVER"
+echo "SSH access is configured on port $SSH_PORT" 
