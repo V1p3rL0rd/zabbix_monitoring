@@ -78,12 +78,9 @@ firewall_ports=("22/tcp" "443/tcp" "10051/tcp")  # Required ports
 
 ## After Installation
 
-1. Add the following entry to /etc/hosts:
-```
-127.0.0.1 zabbix.local
-```
+1. Open in browser: https://zabbix-server-IP/zabbix
 
-2. Open in browser: https://zabbix.local
+2. Follow a few steps to complete the installation 
 
 3. Login with default credentials:
 - Username: Admin
