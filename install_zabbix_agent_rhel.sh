@@ -16,7 +16,7 @@ dnf update -y
 
 # Installing EPEL repository
 echo "Installing EPEL repository..."
-dnf install -y epel-release
+sudo dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm -y
 
 # Adding Zabbix repository
 echo "Adding Zabbix repository..."
