@@ -30,8 +30,8 @@ This repository contains scripts for automatic installation and configuration of
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/zabbix-install-scripts.git
-cd zabbix-install-scripts
+git clone https://github.com/V1p3rL0rd/zabbix_monitoring.git
+cd zabbix_monitoring
 ```
 
 2. Make scripts executable:
@@ -63,30 +63,22 @@ For installing Zabbix agent on RHEL 9.5:
 ```bash
 sudo ./install_zabbix_agent_rhel.sh
 ```
-
 ## Configuration
 
-### Database and SSH Parameters
+### Database and System Parameters
 Before running the scripts, you can modify the following parameters at the beginning of each script:
 
-For server installation scripts:
 ```bash
-DB_NAME="zabbix"           # Database name
-DB_USER="zabbix"           # Database user
-DB_PASSWORD="zabbix_password"  # Database user password
-POSTGRES_PASSWORD="postgres_password"  # PostgreSQL user password
-SSH_PORT="22"              # Port for SSH access
+mysql_db="zabbix"              # Database name
+mysql_user="zabbix"            # Database user
+mysql_pass="Pass_123"          # Database password
+apache_cert_dir="/etc/ssl"     # SSL certificates directory
+firewall_ports=("22/tcp" "443/tcp" "10051/tcp")  # Required ports
 ```
 
-For agent installation scripts:
-```bash
-ZABBIX_SERVER="zabbix.local"  # Zabbix server address
-SSH_PORT="22"                 # SSH port
-```
+## After Installation
 
-### After Installation
-
-1. Add the following entry to `/etc/hosts`:
+1. Add the following entry to /etc/hosts:
 ```
 127.0.0.1 zabbix.local
 ```
@@ -97,34 +89,36 @@ SSH_PORT="22"                 # SSH port
 - Username: Admin
 - Password: zabbix
 
-4. SSH access will be available on the port specified in the `SSH_PORT` variable (default 22)
+## Security Features
 
-## Security
+- Secure MySQL root password generation
+- Protected password storage
+- SSL certificate generation
+- Firewall rules configuration
+- Secure MySQL setup
+- Self-signed SSL certificate valid for 1 year
+- Firewall configuration (UFW for Ubuntu, FirewallD for RHEL)
+- Basic web server security parameters
 
-- Scripts generate a self-signed SSL certificate valid for 1 year
-- Firewall is configured (UFW for Ubuntu, FirewallD for RHEL)
-- Basic Nginx security parameters are configured
-- SSH access is configured (port is set via SSH_PORT variable)
-- In production, it is recommended to:
-  - Change default passwords
-  - Configure a real SSL certificate
-  - Set up additional security parameters
-  - Change the default SSH port
-  - Configure SSH key authentication instead of passwords
+### Production Recommendations
+- Change default passwords
+- Configure a real SSL certificate
+- Set up additional security parameters
+- Configure SSH key authentication instead of passwords
 
 ## Supported Versions
 
 - Ubuntu 24.04 LTS
 - RHEL 9.5
 
+
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Author
-
-[Your Name]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Support
 
-If you encounter any issues, please create an issue in the project repository. 
+If you encounter any issues, please:
+1. Check the documentation
+2. Review existing issues
+3. Create a new issue if needed
