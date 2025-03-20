@@ -1,119 +1,139 @@
 #!/bin/bash
 
-# Database settings
-DB_NAME="zabbix"
-DB_USER="zabbix"
-DB_PASSWORD="zabbix_password"
-POSTGRES_PASSWORD="postgres_password"
-
-# SSH settings
-SSH_PORT="22"
-
 # Check for root privileges
-if [ "$EUID" -ne 0 ]; then 
-    echo "Please run the script with root privileges"
-    exit 1
+if [ "$EUID" -ne 0 ]; then
+   echo "Warning! This script must be run as root!"
+   exit 1
 fi
 
-# System update
-echo "Updating system..."
+# Configuration variables
+mysql_db="zabbix"
+mysql_user="zabbix"  
+mysql_pass="Pass_123" # Replace database password before running the script!
+mysql_root_pass=$(openssl rand -base64 24)  # Generate secure password and save to /root/mysql_root_password.txt
+apache_cert_dir="/etc/ssl"
+firewall_ports=("22/tcp" "443/tcp" "10051/tcp")  
+
+# Update system packages
+echo "Updating system packages..."
 apt update && apt upgrade -y
 
-# Installing required packages
+# Install required packages
 echo "Installing required packages..."
-apt install -y nginx postgresql postgresql-contrib php8.1-fpm php8.1-pgsql php8.1-xml php8.1-ldap php8.1-gd php8.1-curl php8.1-mbstring php8.1-bcmath php8.1-zip php8.1-gmp
+apt install -y wget gnupg2 software-properties-common
 
-# Adding Zabbix repository
-echo "Adding Zabbix repository..."
+# Add Zabbix repository
+echo "Installing Zabbix repository..."
 wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.0-1+ubuntu24.04_all.deb
 dpkg -i zabbix-release_7.0-1+ubuntu24.04_all.deb
 apt update
 
-# Installing Zabbix server and web interface
-echo "Installing Zabbix server and web interface..."
-apt install -y zabbix-server-pgsql zabbix-frontend-php php8.1-pgsql
+# Install Zabbix and required packages
+echo "Installing Zabbix and required packages..."
+apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-apache-conf zabbix-sql-scripts zabbix-agent \
+               mysql-server apache2 php php-mysql php-gd php-xml php-bcmath php-mbstring php-ldap php-zip
 
-# PostgreSQL configuration
-echo "Configuring PostgreSQL..."
-sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '$POSTGRES_PASSWORD';"
-sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
-sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
-zcat /usr/share/doc/zabbix-server-pgsql*/create.sql.gz | sudo -u $DB_USER psql $DB_NAME
+# Start MySQL
+systemctl enable --now mysql
 
-# PHP configuration
-echo "Configuring PHP..."
-sed -i 's/;date.timezone =/date.timezone = Europe\/Moscow/' /etc/php/8.1/fpm/php.ini
-sed -i 's/max_execution_time = 30/max_execution_time = 300/' /etc/php/8.1/fpm/php.ini
-sed -i 's/memory_limit = 128M/memory_limit = 256M/' /etc/php/8.1/fpm/php.ini
+# Configure MySQL security
+echo "Configuring MySQL security..."
+mysql <<EOF
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '${mysql_root_pass}';
+DELETE FROM mysql.user WHERE User='';
+DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1');
+DROP DATABASE IF EXISTS test;
+DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%';
+FLUSH PRIVILEGES;
+EOF
 
-# Zabbix server configuration
+# Create MySQL configuration file for root user access
+cat > /root/.my.cnf <<EOF
+[client]
+user=root
+password=${mysql_root_pass}
+EOF
+chmod 600 /root/.my.cnf
+
+# Save MySQL root password to file with restricted access (root only)
+echo "MySQL root password: ${mysql_root_pass}" > /root/mysql_root_password.txt
+chmod 600 /root/mysql_root_password.txt
+
+# Create database and user for Zabbix
+echo "Creating database and user for Zabbix..."
+mysql --defaults-extra-file=/root/.my.cnf <<EOF
+CREATE DATABASE ${mysql_db} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
+CREATE USER '${mysql_user}'@'localhost' IDENTIFIED BY '${mysql_pass}';
+GRANT ALL PRIVILEGES ON ${mysql_db}.* TO '${mysql_user}'@'localhost';
+FLUSH PRIVILEGES;
+EOF
+
+# Import Zabbix database schema
+echo "Importing Zabbix database schema..."
+zcat /usr/share/zabbix-sql-scripts/mysql/server.sql.gz | mysql --defaults-extra-file=/root/.my.cnf ${mysql_db}
+
+# Configure Zabbix server
 echo "Configuring Zabbix server..."
-sed -i "s/# DBPassword=/DBPassword=$DB_PASSWORD/" /etc/zabbix/zabbix_server.conf
-sed -i 's/# DBHost=localhost/DBHost=localhost/' /etc/zabbix/zabbix_server.conf
-sed -i "s/# DBName=zabbix/DBName=$DB_NAME/" /etc/zabbix/zabbix_server.conf
-sed -i "s/# DBUser=zabbix/DBUser=$DB_USER/" /etc/zabbix/zabbix_server.conf
+sed -i "s/^# DBPassword=.*/DBPassword=${mysql_pass}/" /etc/zabbix/zabbix_server.conf
 
-# SSL certificate generation
-echo "Generating SSL certificate..."
-mkdir -p /etc/nginx/ssl
+# Generate self-signed SSL certificate
+echo "Generating self-signed SSL certificate..."
+mkdir -p ${apache_cert_dir}/{certs,private}
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/nginx/ssl/zabbix.key \
-    -out /etc/nginx/ssl/zabbix.crt \
-    -subj "/C=RU/ST=Moscow/L=Moscow/O=Zabbix/CN=zabbix.local"
+   -keyout ${apache_cert_dir}/private/zabbix.key \
+   -out ${apache_cert_dir}/certs/zabbix.crt \
+   -subj "/C=AB/ST=Sukhum Dist./L=Sukhum/O=SBRA/CN=zabbix.local"
 
-# Nginx configuration
-echo "Configuring Nginx..."
-cat > /etc/nginx/sites-available/zabbix << 'EOL'
-server {
-    listen 443 ssl;
-    server_name zabbix.local;
+# Configure SSL for Apache
+echo "Configuring SSL for Apache..."
+a2enmod ssl
+a2enmod rewrite
+cat > /etc/apache2/sites-available/zabbix.conf <<EOF
+<VirtualHost *:443>
+    ServerName zabbix.local
+    DocumentRoot /usr/share/zabbix
 
-    ssl_certificate /etc/nginx/ssl/zabbix.crt;
-    ssl_certificate_key /etc/nginx/ssl/zabbix.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
+    SSLEngine on
+    SSLCertificateFile ${apache_cert_dir}/certs/zabbix.crt
+    SSLCertificateKeyFile ${apache_cert_dir}/private/zabbix.key
 
-    root /usr/share/zabbix;
-    index index.php;
+    <Directory /usr/share/zabbix>
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
 
-    location / {
-        try_files $uri $uri/ /index.php?$args;
-    }
+    ErrorLog \${APACHE_LOG_DIR}/zabbix_error.log
+    CustomLog \${APACHE_LOG_DIR}/zabbix_access.log combined
+</VirtualHost>
+EOF
 
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
-        fastcgi_index index.php;
-        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-        include fastcgi_params;
-    }
+# Enable Zabbix site and disable default site
+a2ensite zabbix.conf
+a2dissite 000-default.conf
 
-    location ~ /\.(?!well-known).* {
-        deny all;
-    }
-}
-EOL
+# Configure timezone
+echo "Configuring timezone..."
+sed -i "s/^;*\s*date\.timezone\s*=.*/date.timezone = Europe\/Moscow/" /etc/php/8.2/apache2/php.ini
 
-ln -s /etc/nginx/sites-available/zabbix /etc/nginx/sites-enabled/
-rm /etc/nginx/sites-enabled/default
-
-# Restarting services
-echo "Restarting services..."
-systemctl restart postgresql
-systemctl restart php8.1-fpm
-systemctl restart zabbix-server
-systemctl restart nginx
-
-# Firewall configuration
+# Configure Firewall
 echo "Configuring firewall..."
-ufw allow $SSH_PORT/tcp
-ufw allow 443/tcp
-ufw allow 10051/tcp
-ufw --force enable
+if command -v ufw &> /dev/null; then
+    for port in "${firewall_ports[@]}"; do
+        ufw allow ${port}
+    done
+    ufw --force enable
+fi
 
-echo "Installation completed!"
-echo "Please add the following entry to /etc/hosts:"
-echo "127.0.0.1 zabbix.local"
-echo "Then open https://zabbix.local in your browser"
-echo "Default login: Admin"
-echo "Default password: zabbix"
-echo "SSH access is configured on port $SSH_PORT" 
+# Start services
+echo "Starting services..."
+systemctl enable --now apache2 zabbix-server zabbix-agent
+
+# Final information
+echo "Zabbix has been successfully installed!"
+echo "To access the web interface: https://$(hostname -f)/zabbix"
+echo "MySQL root password is stored in: /root/mysql_root_password.txt"
+echo "Database parameters:"
+echo "  Database: ${mysql_db}"
+echo "  User: ${mysql_user}"
+echo "  Password: ${mysql_pass}" 
