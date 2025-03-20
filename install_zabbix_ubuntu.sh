@@ -1,68 +1,68 @@
 #!/bin/bash
 
-# Настройки базы данных
+# Database settings
 DB_NAME="zabbix"
 DB_USER="zabbix"
 DB_PASSWORD="zabbix_password"
 POSTGRES_PASSWORD="postgres_password"
 
-# Настройки SSH
+# SSH settings
 SSH_PORT="22"
 
-# Проверка на root права
+# Check for root privileges
 if [ "$EUID" -ne 0 ]; then 
-    echo "Пожалуйста, запустите скрипт с правами root"
+    echo "Please run the script with root privileges"
     exit 1
 fi
 
-# Обновление системы
-echo "Обновление системы..."
+# System update
+echo "Updating system..."
 apt update && apt upgrade -y
 
-# Установка необходимых пакетов
-echo "Установка необходимых пакетов..."
+# Installing required packages
+echo "Installing required packages..."
 apt install -y nginx postgresql postgresql-contrib php8.1-fpm php8.1-pgsql php8.1-xml php8.1-ldap php8.1-gd php8.1-curl php8.1-mbstring php8.1-bcmath php8.1-zip php8.1-gmp
 
-# Добавление репозитория Zabbix
-echo "Добавление репозитория Zabbix..."
+# Adding Zabbix repository
+echo "Adding Zabbix repository..."
 wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.0-1+ubuntu24.04_all.deb
 dpkg -i zabbix-release_7.0-1+ubuntu24.04_all.deb
 apt update
 
-# Установка Zabbix сервера и веб-интерфейса
-echo "Установка Zabbix сервера и веб-интерфейса..."
+# Installing Zabbix server and web interface
+echo "Installing Zabbix server and web interface..."
 apt install -y zabbix-server-pgsql zabbix-frontend-php php8.1-pgsql
 
-# Настройка PostgreSQL
-echo "Настройка PostgreSQL..."
+# PostgreSQL configuration
+echo "Configuring PostgreSQL..."
 sudo -u postgres psql -c "ALTER USER postgres WITH PASSWORD '$POSTGRES_PASSWORD';"
 sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';"
 sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;"
 zcat /usr/share/doc/zabbix-server-pgsql*/create.sql.gz | sudo -u $DB_USER psql $DB_NAME
 
-# Настройка PHP
-echo "Настройка PHP..."
+# PHP configuration
+echo "Configuring PHP..."
 sed -i 's/;date.timezone =/date.timezone = Europe\/Moscow/' /etc/php/8.1/fpm/php.ini
 sed -i 's/max_execution_time = 30/max_execution_time = 300/' /etc/php/8.1/fpm/php.ini
 sed -i 's/memory_limit = 128M/memory_limit = 256M/' /etc/php/8.1/fpm/php.ini
 
-# Настройка Zabbix сервера
-echo "Настройка Zabbix сервера..."
+# Zabbix server configuration
+echo "Configuring Zabbix server..."
 sed -i "s/# DBPassword=/DBPassword=$DB_PASSWORD/" /etc/zabbix/zabbix_server.conf
 sed -i 's/# DBHost=localhost/DBHost=localhost/' /etc/zabbix/zabbix_server.conf
 sed -i "s/# DBName=zabbix/DBName=$DB_NAME/" /etc/zabbix/zabbix_server.conf
 sed -i "s/# DBUser=zabbix/DBUser=$DB_USER/" /etc/zabbix/zabbix_server.conf
 
-# Генерация SSL сертификата
-echo "Генерация SSL сертификата..."
+# SSL certificate generation
+echo "Generating SSL certificate..."
 mkdir -p /etc/nginx/ssl
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /etc/nginx/ssl/zabbix.key \
     -out /etc/nginx/ssl/zabbix.crt \
     -subj "/C=RU/ST=Moscow/L=Moscow/O=Zabbix/CN=zabbix.local"
 
-# Настройка Nginx
-echo "Настройка Nginx..."
+# Nginx configuration
+echo "Configuring Nginx..."
 cat > /etc/nginx/sites-available/zabbix << 'EOL'
 server {
     listen 443 ssl;
@@ -96,24 +96,24 @@ EOL
 ln -s /etc/nginx/sites-available/zabbix /etc/nginx/sites-enabled/
 rm /etc/nginx/sites-enabled/default
 
-# Перезапуск сервисов
-echo "Перезапуск сервисов..."
+# Restarting services
+echo "Restarting services..."
 systemctl restart postgresql
 systemctl restart php8.1-fpm
 systemctl restart zabbix-server
 systemctl restart nginx
 
-# Настройка файрвола
-echo "Настройка файрвола..."
+# Firewall configuration
+echo "Configuring firewall..."
 ufw allow $SSH_PORT/tcp
 ufw allow 443/tcp
 ufw allow 10051/tcp
 ufw --force enable
 
-echo "Установка завершена!"
-echo "Пожалуйста, добавьте в /etc/hosts запись:"
+echo "Installation completed!"
+echo "Please add the following entry to /etc/hosts:"
 echo "127.0.0.1 zabbix.local"
-echo "После этого откройте https://zabbix.local в браузере"
-echo "Логин по умолчанию: Admin"
-echo "Пароль по умолчанию: zabbix"
-echo "SSH доступ настроен на порту $SSH_PORT" 
+echo "Then open https://zabbix.local in your browser"
+echo "Default login: Admin"
+echo "Default password: zabbix"
+echo "SSH access is configured on port $SSH_PORT" 
