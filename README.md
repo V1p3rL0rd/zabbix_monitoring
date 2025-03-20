@@ -1,40 +1,40 @@
-# Скрипты установки Zabbix Server 7.0 LTS
+# Zabbix Server 7.0 LTS Installation Scripts
 
-Этот репозиторий содержит скрипты для автоматической установки и настройки Zabbix Server 7.0 LTS на операционных системах Ubuntu 24.04 и RHEL 9.5.
+This repository contains scripts for automatic installation and configuration of Zabbix Server 7.0 LTS on Ubuntu 24.04 and RHEL 9.5 operating systems.
 
-## Особенности
+## Features
 
-- Автоматическая установка Zabbix Server 7.0 LTS
-- Настройка PostgreSQL в качестве базы данных
-- Настройка Nginx в качестве веб-сервера
-- Генерация самозаверенного SSL сертификата
-- Настройка безопасности (SSL/TLS, файрвол)
-- Поддержка двух дистрибутивов: Ubuntu 24.04 и RHEL 9.5
+- Automatic installation of Zabbix Server 7.0 LTS
+- PostgreSQL database configuration
+- Nginx web server configuration
+- Self-signed SSL certificate generation
+- Security configuration (SSL/TLS, firewall)
+- Support for two distributions: Ubuntu 24.04 and RHEL 9.5
 
-## Требования
+## Requirements
 
 ### Ubuntu 24.04
-- Минимум 2 ГБ RAM
-- Минимум 20 ГБ свободного места на диске
-- Доступ к интернету для загрузки пакетов
-- Права root
+- Minimum 2 GB RAM
+- Minimum 20 GB free disk space
+- Internet access for package downloads
+- Root privileges
 
 ### RHEL 9.5
-- Минимум 2 ГБ RAM
-- Минимум 20 ГБ свободного места на диске
-- Доступ к интернету для загрузки пакетов
-- Права root
-- Подписка на репозитории RHEL (для установки пакетов)
+- Minimum 2 GB RAM
+- Minimum 20 GB free disk space
+- Internet access for package downloads
+- Root privileges
+- RHEL repository subscription (for package installation)
 
-## Установка
+## Installation
 
-1. Клонируйте репозиторий:
+1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/zabbix-install-scripts.git
 cd zabbix-install-scripts
 ```
 
-2. Сделайте скрипты исполняемыми:
+2. Make scripts executable:
 ```bash
 chmod +x install_zabbix_ubuntu.sh
 chmod +x install_zabbix_rhel.sh
@@ -42,89 +42,89 @@ chmod +x install_zabbix_agent_ubuntu.sh
 chmod +x install_zabbix_agent_rhel.sh
 ```
 
-3. Выберите и запустите соответствующий скрипт:
+3. Select and run the appropriate script:
 
-Для установки сервера Zabbix на Ubuntu 24.04:
+For installing Zabbix server on Ubuntu 24.04:
 ```bash
 sudo ./install_zabbix_ubuntu.sh
 ```
 
-Для установки сервера Zabbix на RHEL 9.5:
+For installing Zabbix server on RHEL 9.5:
 ```bash
 sudo ./install_zabbix_rhel.sh
 ```
 
-Для установки агента Zabbix на Ubuntu 24.04:
+For installing Zabbix agent on Ubuntu 24.04:
 ```bash
 sudo ./install_zabbix_agent_ubuntu.sh
 ```
 
-Для установки агента Zabbix на RHEL 9.5:
+For installing Zabbix agent on RHEL 9.5:
 ```bash
 sudo ./install_zabbix_agent_rhel.sh
 ```
 
-## Настройка
+## Configuration
 
-### Параметры базы данных и SSH
-Перед запуском скриптов вы можете изменить следующие параметры в начале каждого скрипта:
+### Database and SSH Parameters
+Before running the scripts, you can modify the following parameters at the beginning of each script:
 
-Для скриптов установки сервера:
+For server installation scripts:
 ```bash
-DB_NAME="zabbix"           # Имя базы данных
-DB_USER="zabbix"           # Пользователь базы данных
-DB_PASSWORD="zabbix_password"  # Пароль пользователя базы данных
-POSTGRES_PASSWORD="postgres_password"  # Пароль пользователя postgres
-SSH_PORT="22"              # Порт для SSH доступа
+DB_NAME="zabbix"           # Database name
+DB_USER="zabbix"           # Database user
+DB_PASSWORD="zabbix_password"  # Database user password
+POSTGRES_PASSWORD="postgres_password"  # PostgreSQL user password
+SSH_PORT="22"              # Port for SSH access
 ```
 
-Для скриптов установки агента:
+For agent installation scripts:
 ```bash
-ZABBIX_SERVER="zabbix.local"  # Адрес сервера Zabbix
-SSH_PORT="22"                 # Порт SSH
+ZABBIX_SERVER="zabbix.local"  # Zabbix server address
+SSH_PORT="22"                 # SSH port
 ```
 
-### После установки
+### After Installation
 
-1. Добавьте в файл `/etc/hosts` запись:
+1. Add the following entry to `/etc/hosts`:
 ```
 127.0.0.1 zabbix.local
 ```
 
-2. Откройте в браузере: https://zabbix.local
+2. Open in browser: https://zabbix.local
 
-3. Войдите с учетными данными по умолчанию:
-- Логин: Admin
-- Пароль: zabbix
+3. Login with default credentials:
+- Username: Admin
+- Password: zabbix
 
-4. SSH доступ будет доступен на порту, указанном в переменной `SSH_PORT` (по умолчанию 22)
+4. SSH access will be available on the port specified in the `SSH_PORT` variable (default 22)
 
-## Безопасность
+## Security
 
-- Скрипты генерируют самозаверенный SSL сертификат, действительный 1 год
-- Настроен файрвол (UFW для Ubuntu, FirewallD для RHEL)
-- Настроены базовые параметры безопасности Nginx
-- Настроен доступ по SSH (порт настраивается через переменную SSH_PORT)
-- В продакшене рекомендуется:
-  - Изменить пароли по умолчанию
-  - Настроить реальный SSL сертификат
-  - Настроить дополнительные параметры безопасности
-  - Изменить стандартный порт SSH
-  - Настроить аутентификацию по SSH-ключам вместо паролей
+- Scripts generate a self-signed SSL certificate valid for 1 year
+- Firewall is configured (UFW for Ubuntu, FirewallD for RHEL)
+- Basic Nginx security parameters are configured
+- SSH access is configured (port is set via SSH_PORT variable)
+- In production, it is recommended to:
+  - Change default passwords
+  - Configure a real SSL certificate
+  - Set up additional security parameters
+  - Change the default SSH port
+  - Configure SSH key authentication instead of passwords
 
-## Поддерживаемые версии
+## Supported Versions
 
 - Ubuntu 24.04 LTS
 - RHEL 9.5
 
-## Лицензия
+## License
 
 MIT License
 
-## Автор
+## Author
 
-[Ваше имя]
+[Your Name]
 
-## Поддержка
+## Support
 
-При возникновении проблем создавайте issue в репозитории проекта. 
+If you encounter any issues, please create an issue in the project repository. 
