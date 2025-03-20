@@ -5,8 +5,8 @@ This repository contains scripts for automatic installation and configuration of
 ## Features
 
 - Automatic installation of Zabbix Server 7.0 LTS
-- PostgreSQL database configuration
-- Nginx web server configuration
+- MySQL database configuration
+- Web server configuration (Apache/httpd)
 - Self-signed SSL certificate generation
 - Security configuration (SSL/TLS, firewall)
 - Support for two distributions: Ubuntu 24.04 and RHEL 9.5
