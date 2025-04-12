@@ -1,6 +1,6 @@
 # Zabbix Server 7.0 LTS Installation Scripts
 
-This repository contains scripts for automatic installation and configuration of Zabbix Server 7.0 LTS on Ubuntu 24.04 and RHEL 9.5 operating systems.
+This repository contains scripts for automatic installation and configuration of Zabbix Server 7.0 LTS on Ubuntu 24.04 and RHEL/AlmaLinux 9.5 operating systems.
 
 ## Features
 
@@ -19,7 +19,7 @@ This repository contains scripts for automatic installation and configuration of
 - Internet access for package downloads
 - Root privileges
 
-### RHEL 9.5
+### RHEL/AlmaLinux 9.5
 - Minimum 2 GB RAM
 - Minimum 20 GB free disk space
 - Internet access for package downloads
